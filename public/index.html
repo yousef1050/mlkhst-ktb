@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ملخصات كتب ومحتوى صوتي</title>
+<style>
+  :root{ --bg:#faf6ef; --card:#ffffff; --ink:#2b2118; --muted:#8a7a68; --accent:#b4762a; --accent2:#7a4d16; --line:#eadfce; --dark:#1d1712; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:"Segoe UI", Tahoma, Arial, sans-serif; background:var(--bg); color:var(--ink); }
+  header{ position:sticky; top:0; z-index:20; background:var(--bg); border-bottom:1px solid var(--line); padding:10px 14px; display:flex; align-items:center; gap:10px; }
+  header .logo{ font-weight:800; font-size:18px; }
+  header .spacer{ flex:1; }
+  .chip{ display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:14px; }
+  .chip b{ color:var(--accent2); }
+  nav.tabs{ position:sticky; top:53px; z-index:19; background:var(--bg); display:flex; gap:6px; padding:8px 10px; border-bottom:1px solid var(--line); overflow-x:auto; }
+  nav.tabs button{ flex:1; white-space:nowrap; border:1px solid var(--line); background:var(--card); border-radius:999px; padding:9px 10px; font-size:15px; cursor:pointer; }
+  nav.tabs button.active{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+  main{ max-width:860px; margin:0 auto; padding:16px 12px 90px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:12px; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
+  .book{ cursor:pointer; }
+  .book h3{ margin:6px 0 2px; font-size:17px; }
+  .meta{ color:var(--muted); font-size:13px; }
+  .tag{ display:inline-block; background:#f3e8d5; color:var(--accent2); border-radius:999px; padding:2px 10px; font-size:12px; }
+  .btn{ background:var(--accent); color:#fff; border:none; border-radius:12px; padding:10px 18px; font-size:15px; cursor:pointer; font-weight:700; }
+  .btn.ghost{ background:transparent; color:var(--accent2); border:1px solid var(--accent); }
+  .btn:disabled{ opacity:.5; cursor:default; }
+  input, select, textarea{ width:100%; padding:11px; border:1px solid var(--line); border-radius:12px; font-size:15px; margin-bottom:10px; background:#fff; font-family:inherit; }
+  .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .err{ color:#b3261e; font-size:14px; min-height:18px; }
+  .ok{ color:#1e7d32; font-size:14px; }
+  .player{ background:var(--dark); color:#f5ead9; border-radius:20px; padding:18px; margin:14px 0; }
+  .player .ttl{ font-size:18px; font-weight:800; margin-bottom:2px; }
+  .player .sub{ color:#c9b894; font-size:13px; margin-bottom:12px; }
+  .player .bar{ display:flex; align-items:center; gap:10px; font-size:12px; }
+  .player input[type=range]{ flex:1; accent-color:#e8a94e; margin:0; }
+  .player .ctrls{ display:flex; align-items:center; justify-content:center; gap:14px; margin-top:10px; }
+  .pbtn{ background:#2c231b; color:#f5ead9; border:1px solid #4a3a28; width:46px; height:46px; border-radius:50%; font-size:16px; cursor:pointer; }
+  .pbtn.main{ background:#fff; color:#1d1712; width:64px; height:64px; font-size:24px; border:none; }
+  .reader-text{ white-space:pre-wrap; line-height:2; font-size:17px; }
+  .stars{ font-size:26px; cursor:pointer; letter-spacing:4px; }
+  .daygrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; }
+  .daybox{ border:1px solid var(--line); border-radius:12px; padding:10px; background:#fff; }
+  .daybox.locked{ opacity:.55; }
+  .task{ border-top:1px dashed var(--line); padding:10px 0; }
+  table{ width:100%; border-collapse:collapse; }
+  td, th{ padding:8px; border-bottom:1px solid var(--line); text-align:right; font-size:14px; }
+  .hidden{ display:none !important; }
+  .toast{ position:fixed; bottom:18px; right:50%; transform:translateX(50%); background:var(--dark); color:#fff; padding:10px 18px; border-radius:999px; font-size:14px; z-index:50; }
+  h2.sec{ font-size:19px; margin:18px 0 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">📚 ملخصات كتب</div>
+  <div class="spacer"></div>
+  <div id="accountChip" class="chip hidden"></div>
+  <button id="dailyBtn" class="btn hidden" style="padding:7px 14px">حضور يومي +10</button>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-tab="discover" class="active">اكتشف</button>
+  <button data-tab="library">المكتبة</button>
+  <button data-tab="podcast">البودكاست</button>
+  <button data-tab="challenges">التحديات</button>
+  <button data-tab="account">حسابي</button>
+</nav>
+<main>
+  <section id="tab-discover"></section>
+  <section id="tab-library" class="hidden"></section>
+  <section id="tab-podcast" class="hidden"></section>
+  <section id="tab-challenges" class="hidden"></section>
+  <section id="tab-account" class="hidden"></section>
+  <section id="view-reader" class="hidden"></section>
+  <section id="view-challenge" class="hidden"></section>
+</main>
+<div id="toast" class="toast hidden"></div>
+<script>
+const $ = s => document.querySelector(s);
+const api = async (path, body) => {
+  const r = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'حدث خطأ');
+  return data;
+};
+let me = null, summariesCache = [];
+const fmt = sec => String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(Math.floor(sec % 60)).padStart(2, '0');
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2600); }
+function showTab(name) {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  ['discover', 'library', 'podcast', 'challenges', 'account'].forEach(t => $('#tab-' + t).classList.toggle('hidden', t !== name));
+  $('#view-reader').classList.add('hidden'); $('#view-challenge').classList.add('hidden');
+  ({ discover: renderDiscover, library: renderLibrary, podcast: renderPodcast, challenges: renderChallenges, account: renderAccount })[name]();
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+async function refreshMe() {
+  const { account } = await api('/api/me');
+  me = account;
+  const chip = $('#accountChip');
+  if (me) {
+    chip.innerHTML = `<span style="font-size:20px">${me.avatar}</span> <span>${me.displayName}</span> · <b>${me.points} نقطة</b> · ${me.level.name}`;
+    chip.classList.remove('hidden'); $('#dailyBtn').classList.remove('hidden');
+  } else { chip.classList.add('hidden'); $('#dailyBtn').classList.add('hidden'); }
+}
+$('#dailyBtn').onclick = async () => {
+  try { const r = await api('/api/claim-daily', {}); toast(r.added ? 'تمت إضافة 10 نقاط حضور 🎉' : 'حضور اليوم مسجّل من قبل'); refreshMe(); }
+  catch (e) { toast(e.message); }
+};
+
+// ---------- اكتشف ----------
+async function renderDiscover() {
+  const [{ summaries }, { requests }] = await Promise.all([api('/api/summaries'), api('/api/requests')]);
+  summariesCache = summaries;
+  const dayIdx = Math.floor(Date.now() / 86400000) % summaries.length;
+  const idea = summaries[dayIdx];
+  const top = [...summaries].filter(s => s.avgRating).sort((a, b) => b.avgRating - a.avgRating).slice(0, 3);
+  $('#tab-discover').innerHTML = `
+    <div class="card"><div class="tag">فكرة اليوم</div>
+      <h3 style="margin:8px 0 2px">${idea.title} — ${idea.author}</h3>
+      <p class="meta">ملخص اليوم المقترح لك · ${fmt(idea.durationSec)} دقيقة استماع</p>
+      <button class="btn" onclick="openSummary(${idea.id})">افتح الملخص</button></div>
+    <h2 class="sec">الأكثر طلبًا — صوّت للكتاب الجاي</h2>
+    <div class="card">${requests.map(r => `
+      <div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:7px 0">
+        <span>${r.title}</span><span class="row"><b>${r.votes}</b>
+        <button class="btn ghost" style="padding:5px 12px" ${r.mine ? 'disabled' : ''} onclick="vote(${r.id})">${r.mine ? 'صوّتّ ✓' : 'صوّت +3'}</button></span>
+      </div>`).join('')}</div>
+    ${top.length ? `<h2 class="sec">الأعلى تقييمًا</h2><div class="grid">${top.map(bookCard).join('')}</div>` : ''}
+    <h2 class="sec">وصل حديثًا</h2><div class="grid">${summaries.slice(-3).map(bookCard).join('')}</div>`;
+}
+async function vote(id) {
+  try { await api('/api/vote', { bookId: id }); toast('تم التصويت +3 نقاط'); refreshMe(); renderDiscover(); }
+  catch (e) { toast(e.message); }
+}
+function bookCard(s) {
+  return `<div class="card book" onclick="openSummary(${s.id})">
+    <span class="tag">${s.category}</span>
+    <h3>${s.title}</h3><div class="meta">${s.author} · ${fmt(s.durationSec)}</div>
+    <div class="meta">${s.avgRating ? '⭐ ' + s.avgRating : ''} ${s.my && s.my.completed ? '· ✅ مكتمل' : ''} ${s.my && s.my.favorite ? '· ❤️' : ''}</div></div>`;
+}
+
+// ---------- المكتبة ----------
+async function renderLibrary() {
+  const { summaries } = await api('/api/summaries');
+  summariesCache = summaries;
+  const cats = ['الكل', ...new Set(summaries.map(s => s.category))];
+  $('#tab-library').innerHTML = `
+    <div class="row"><input id="q" placeholder="ابحث عن كتاب أو مؤلف..." style="flex:2">
+    <select id="cat" style="flex:1">${cats.map(c => `<option>${c}</option>`).join('')}</select>
+    <select id="sort" style="flex:1"><option value="id">الأقدم</option><option value="rating">الأعلى تقييمًا</option><option value="title">أبجدي</option></select></div>
+    <div class="grid" id="libGrid"></div>`;
+  const draw = () => {
+    const q = $('#q').value.trim(), cat = $('#cat').value, sort = $('#sort').value;
+    let list = summaries.filter(s => (cat === 'الكل' || s.category === cat) && (!q || s.title.includes(q) || s.author.includes(q)));
+    if (sort === 'rating') list.sort((a, b) => (b.avgRating || 0) - (a.avgRating || 0));
+    if (sort === 'title') list.sort((a, b) => a.title.localeCompare(b.title, 'ar'));
+    $('#libGrid').innerHTML = list.length ? list.map(bookCard).join('') : '<p class="meta">لا توجد نتائج.</p>';
+  };
+  $('#q').oninput = draw; $('#cat').onchange = draw; $('#sort').onchange = draw; draw();
+}
+
+// ---------- قارئ الملخص والمشغّل ----------
+let audio = null, curSummary = null, sleepTimer = null;
+async function openSummary(id) {
+  const { summary } = await api('/api/summaries/' + id);
+  curSummary = summary;
+  const mine = (summariesCache.find(s => s.id === id) || {}).my || {};
+  ['discover', 'library', 'podcast', 'challenges', 'account'].forEach(t => $('#tab-' + t).classList.add('hidden'));
+  const v = $('#view-reader'); v.classList.remove('hidden');
+  v.innerHTML = `
+    <button class="btn ghost" onclick="showTab('library')">→ رجوع للمكتبة</button>
+    <h2 style="margin:12px 0 2px">${summary.title}</h2><div class="meta">${summary.author} · ${summary.category}</div>
+    <div class="player">
+      <div class="ttl">الملخص الكامل</div><div class="sub">${summary.title} — صوت رجالي قوي (Google AI Studio)</div>
+      <div class="bar"><span id="cur">00:00</span><input type="range" id="seek" min="0" max="${summary.durationSec}" value="${mine.positionSec || 0}"><span>${fmt(summary.durationSec)}</span></div>
+      <div class="ctrls">
+        <button class="pbtn" id="back15">⏪</button>
+        <button class="pbtn main" id="playBtn">▶</button>
+        <button class="pbtn" id="fwd15">⏩</button>
+        <button class="pbtn" id="speedBtn" style="font-size:12px">1x</button>
+        <button class="pbtn" id="sleepBtn">🌙</button>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn" id="completeBtn">${mine.completed ? '✅ اكتمل' : 'إنهاء الملخص (+50)'}</button>
+      <button class="btn ghost" id="favBtn">${mine.favorite ? '❤️ في المفضلة' : '🤍 أضف للمفضلة (+3)'}</button>
+      <span class="stars" id="stars">${[1, 2, 3, 4, 5].map(i => `<span data-i="${i}">${i <= (mine.rating || 0) ? '★' : '☆'}</span>`).join('')}</span>
+    </div>
+    <div class="card" style="margin-top:14px"><div class="reader-text">${summary.text.replace(/</g, '&lt;')}</div></div>`;
+  if (audio) { audio.pause(); audio = null; }
+  audio = new Audio(summary.audio);
+  audio.currentTime = mine.positionSec || 0;
+  const playBtn = $('#playBtn'), seek = $('#seek');
+  playBtn.onclick = () => audio.paused ? audio.play() : audio.pause();
+  audio.onplay = () => playBtn.textContent = '⏸';
+  audio.onpause = () => { playBtn.textContent = '▶'; savePos(); };
+  audio.ontimeupdate = () => { seek.value = Math.floor(audio.currentTime); $('#cur').textContent = fmt(audio.currentTime); };
+  seek.oninput = () => audio.currentTime = Number(seek.value);
+  $('#back15').onclick = () => audio.currentTime = Math.max(0, audio.currentTime - 15);
+  $('#fwd15').onclick = () => audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 15);
+  const speeds = [1, 1.25, 1.5, 2]; let si = 0;
+  $('#speedBtn').onclick = e => { si = (si + 1) % speeds.length; audio.playbackRate = speeds[si]; e.target.textContent = speeds[si] + 'x'; };
+  $('#sleepBtn').onclick = () => { clearTimeout(sleepTimer); sleepTimer = setTimeout(() => audio.pause(), 15 * 60000); toast('مؤقّت نوم: إيقاف بعد 15 دقيقة'); };
+  const savePos = () => { if (me) api('/api/progress', { summaryId: id, positionSec: Math.floor(audio.currentTime) }).catch(() => {}); };
+  setInterval(() => { if (audio && !audio.paused) savePos(); }, 15000);
+  $('#completeBtn').onclick = async e => {
+    try { const r = await api('/api/progress', { summaryId: id, completed: true }); toast(r.awardedNow ? 'أحسنت! +50 نقطة 🎉' : 'مسجّل كمكتمل من قبل'); e.target.textContent = '✅ اكتمل'; refreshMe(); }
+    catch (err) { toast(err.message); }
+  };
+  $('#favBtn').onclick = async e => {
+    const fav = e.target.textContent.includes('🤍');
+    try { const r = await api('/api/progress', { summaryId: id, favorite: fav }); toast(r.awardedNow ? '+3 نقاط مفضلة' : 'تم'); e.target.textContent = fav ? '❤️ في المفضلة' : '🤍 أضف للمفضلة (+3)'; refreshMe(); }
+    catch (err) { toast(err.message); }
+  };
+  document.querySelectorAll('#stars span').forEach(sp => sp.onclick = async () => {
+    try { const r = await api('/api/progress', { summaryId: id, rating: Number(sp.dataset.i) }); toast(r.awardedNow ? '+5 نقاط تقييم' : 'تم حفظ التقييم'); openSummary(id); refreshMe(); }
+    catch (err) { toast(err.message); }
+  });
+  window.scrollTo(0, 0);
+}
+</script>
+<script>
+// ---------- البودكاست ----------
+async function renderPodcast() {
+  const { episodes, isSubscriber } = await api('/api/episodes');
+  $('#tab-podcast').innerHTML = `
+    <div class="card"><b>بودكاست حصري للمشتركين</b>
+      <p class="meta">٣ حلقات حصرية. ${isSubscriber ? 'اشتراكك مفعّل ✅' : 'الاشتراك حاليًا تفعيل تجريبي داخل التطبيق — لا توجد بوابة دفع حقيقية بعد.'}</p>
+      ${!isSubscriber && me ? '<button class="btn" onclick="subscribe()">فعّل الاشتراك (تجريبي)</button>' : ''}
+      ${!me ? '<p class="meta">سجّل الدخول من تبويب «حسابي» أولًا.</p>' : ''}</div>
+    ${episodes.map(e => `<div class="card"><h3 style="margin:4px 0">${e.locked ? '🔒 ' : ''}${e.title}</h3>
+      <div class="meta">المدة ${fmt(e.durationSec)}</div>
+      ${e.locked ? '<p class="meta">هذه الحلقة للمشتركين.</p>' : `<audio controls src="${e.audio}" style="width:100%;margin-top:8px"></audio>
+      <div class="reader-text" style="font-size:15px;margin-top:8px">${e.text.replace(/</g, '&lt;')}</div>`}</div>`).join('')}`;
+}
+async function subscribe() {
+  try { const r = await api('/api/subscribe', {}); toast(r.note); refreshMe(); renderPodcast(); }
+  catch (e) { toast(e.message); }
+}
+
+// ---------- التحديات ----------
+async function renderChallenges() {
+  const { challenges } = await api('/api/challenges');
+  $('#tab-challenges').innerHTML = challenges.map(c => `
+    <div class="card"><div class="row" style="justify-content:space-between">
+      <h3 style="margin:4px 0">${c.title}</h3>${c.subscribersOnly ? '<span class="tag">للمشتركين</span>' : ''}</div>
+      <p class="meta">${c.desc}</p>
+      <div class="meta">${c.daysCount} أيام · اليوم الحالي: ${c.currentDay} ${c.enrolled ? `· تقدّمك: ${c.doneTasks}/${c.totalTasks} مهمة` : ''}</div>
+      <button class="btn" style="margin-top:8px" onclick="openChallenge(${c.id})">${c.enrolled ? 'افتح التحدي' : 'عرض وانضمام'}</button></div>`).join('');
+}
+async function openChallenge(id) {
+  const { challenge: c } = await api('/api/challenges/' + id);
+  ['discover', 'library', 'podcast', 'challenges', 'account'].forEach(t => $('#tab-' + t).classList.add('hidden'));
+  const v = $('#view-challenge'); v.classList.remove('hidden');
+  v.innerHTML = `
+    <button class="btn ghost" onclick="showTab('challenges')">→ رجوع للتحديات</button>
+    <h2 style="margin:12px 0 2px">${c.title}</h2><p class="meta">${c.desc}</p>
+    ${!c.enrolled ? '<button class="btn" id="joinBtn">انضم إلى التحدي</button>' : `<p class="ok">منضم ✓ · أنجزت ${c.doneTasks} من ${c.totalTasks} مهمة</p>`}
+    <div id="daysWrap">${c.days.map(d => `
+      <div class="card"><b>اليوم ${d.day}</b> ${d.locked ? '<span class="meta">🔒 يفتح لاحقًا</span>' : ''}
+      ${d.tasks.map((t, i) => `
+        <div class="task"><div class="row" style="justify-content:space-between"><span>${t.done ? '✅' : '⬜'} ${t.title} <span class="meta">(+${t.points})</span></span></div>
+        ${!t.done && !d.locked && c.enrolled ? taskInput(c.id, d.day, i, t) : ''}</div>`).join('')}
+      </div>`).join('')}</div>`;
+  const joinBtn = $('#joinBtn');
+  if (joinBtn) joinBtn.onclick = async () => {
+    try { await api('/api/challenges/join', { challengeId: id }); toast('تم الانضمام 🎉'); openChallenge(id); }
+    catch (e) { toast(e.message); }
+  };
+  window.scrollTo(0, 0);
+}
+function taskInput(cid, day, idx, t) {
+  if (t.type === 'mcq') return `<div class="row">${t.options.map((o, oi) => `<button class="btn ghost" style="padding:6px 12px" onclick="doTask(${cid},${day},${idx},${oi})">${o}</button>`).join('')}</div>`;
+  if (t.type === 'write') return `<div class="row"><input id="w-${cid}-${day}-${idx}" placeholder="اكتب إجابتك هنا..." style="flex:1;margin:0"><button class="btn" style="padding:8px 14px" onclick="doTask(${cid},${day},${idx},document.getElementById('w-${cid}-${day}-${idx}').value)">حفظ</button></div>`;
+  return `<button class="btn" style="padding:8px 14px" onclick="doTask(${cid},${day},${idx},null)">تحقّق وأكمل</button>`;
+}
+async function doTask(cid, day, idx, answer) {
+  try { const r = await api('/api/challenges/task', { challengeId: cid, day, taskIdx: idx, answer });
+    if (!r.ok) { toast(r.error || 'لم تكتمل المهمة'); return; }
+    toast(r.awardedNow ? `+${r.awardedNow} نقطة 🎉` : 'اكتملت المهمة'); refreshMe(); openChallenge(cid); }
+  catch (e) { toast(e.message); }
+}
+
+// ---------- حسابي ----------
+async function renderAccount() {
+  const el = $('#tab-account');
+  if (!me) {
+    el.innerHTML = `
+      <div class="card"><h3 style="margin-top:0">تسجيل الدخول</h3>
+        <input id="li-user" placeholder="اسم المستخدم"><input id="li-pass" type="password" placeholder="كلمة المرور">
+        <div class="err" id="li-err"></div><button class="btn" id="loginBtn">دخول</button></div>
+      <div class="card"><h3 style="margin-top:0">حساب جديد</h3>
+        <input id="rg-user" placeholder="اسم المستخدم"><input id="rg-name" placeholder="الاسم المعروض (اختياري)"><input id="rg-pass" type="password" placeholder="كلمة المرور (٦ أحرف على الأقل)">
+        <div class="err" id="rg-err"></div><button class="btn" id="regBtn">إنشاء حساب (+20 ترحيب)</button></div>
+      <p class="meta">التصفح متاح دون حساب، لكن النقاط والحفظ للمشتركين بحساب فقط.</p>`;
+    $('#loginBtn').onclick = async () => {
+      try { await api('/api/login', { username: $('#li-user').value, password: $('#li-pass').value }); await refreshMe(); renderAccount(); toast('أهلًا بعودتك 👋'); }
+      catch (e) { $('#li-err').textContent = e.message; }
+    };
+    $('#regBtn').onclick = async () => {
+      try { await api('/api/register', { username: $('#rg-user').value, password: $('#rg-pass').value, displayName: $('#rg-name').value }); await refreshMe(); renderAccount(); toast('تم إنشاء الحساب +20 نقطة ترحيب 🎉'); }
+      catch (e) { $('#rg-err').textContent = e.message; }
+    };
+    return;
+  }
+  const { history } = await api('/api/my-points');
+  const { rows } = await api('/api/leaderboard');
+  const next = me.level.next;
+  el.innerHTML = `
+    <div class="card"><div class="row"><span style="font-size:34px">${me.avatar}</span>
+      <div><b style="font-size:18px">${me.displayName}</b><div class="meta">@${me.username} · ${me.isSubscriber ? 'مشترك ✅' : 'حساب مجاني'}</div></div></div>
+      <h3 style="margin:12px 0 2px">${me.points} نقطة · المستوى: ${me.level.name}</h3>
+      <div class="meta">${next ? `باقي ${next.min - me.points} نقطة لمستوى ${next.name}` : 'وصلت لأعلى مستوى 🏆'}</div>
+      <div style="background:#f3e8d5;border-radius:999px;height:10px;margin-top:8px"><div style="background:var(--accent);height:10px;border-radius:999px;width:${next ? Math.min(100, Math.round(me.points / next.min * 100)) : 100}%"></div></div></div>
+    <div class="card"><h3 style="margin-top:0">تعديل الملف</h3>
+      <input id="pf-name" value="${me.displayName.replace(/"/g, '&quot;')}" placeholder="الاسم المعروض">
+      <input id="pf-avatar" value="${me.avatar}" placeholder="صورة رمزية (إيموجي)">
+      <button class="btn" id="pfBtn">حفظ</button>
+      <h3>تغيير كلمة المرور</h3>
+      <input id="pw-cur" type="password" placeholder="الحالية"><input id="pw-new" type="password" placeholder="الجديدة">
+      <div class="err" id="pw-err"></div><button class="btn ghost" id="pwBtn">تغيير</button>
+      <div style="margin-top:14px"><button class="btn ghost" id="logoutBtn">تسجيل الخروج</button></div></div>
+    <h2 class="sec">سجلّ النقاط</h2>
+    <div class="card">${history.length ? history.map(h => `<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:6px 0"><span>${h.reason}</span><b>+${h.points}</b></div>`).join('') : '<p class="meta">لا حركات بعد.</p>'}</div>
+    <h2 class="sec">لوحة المتصدرين</h2>
+    <div class="card"><table><tr><th>#</th><th>الاسم</th><th>النقاط</th><th>المستوى</th></tr>
+      ${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${r.avatar} ${r.displayName}</td><td>${r.points}</td><td>${r.level}</td></tr>`).join('')}</table></div>`;
+  $('#pfBtn').onclick = async () => { await api('/api/profile', { displayName: $('#pf-name').value, avatar: $('#pf-avatar').value }); await refreshMe(); renderAccount(); toast('تم الحفظ'); };
+  $('#pwBtn').onclick = async () => {
+    try { await api('/api/change-password', { current: $('#pw-cur').value, next: $('#pw-new').value }); toast('تم تغيير كلمة المرور'); }
+    catch (e) { $('#pw-err').textContent = e.message; }
+  };
+  $('#logoutBtn').onclick = async () => { await api('/api/logout', {}); await refreshMe(); renderAccount(); };
+}
+
+refreshMe().then(() => showTab('discover'));
+</script>
+</body>
+</html>
